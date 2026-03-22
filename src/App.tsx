@@ -19,7 +19,9 @@ import {
   Sparkles,
   CloudRain,
   Moon,
-  Zap
+  Zap,
+  Menu,
+  X
 } from 'lucide-react';
 import { getMindockResponse, Mode } from './services/geminiService';
 
@@ -288,7 +290,7 @@ const DreamMode = ({ onInteract, onSave }: { onInteract: (text: string) => void,
   };
 
   return (
-    <div className="h-full flex flex-col p-12 overflow-y-auto">
+    <div className="h-full flex flex-col p-6 lg:p-12 overflow-y-auto">
       <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col">
         <div className="flex items-center gap-2 mb-6 text-amber-200/60">
           <Moon size={16} />
@@ -300,7 +302,7 @@ const DreamMode = ({ onInteract, onSave }: { onInteract: (text: string) => void,
           onChange={(e) => setContent(e.target.value)}
           placeholder="记录你昨晚的梦境..."
           maxLength={800}
-          className="w-full h-64 p-8 rounded-3xl glass-card border-white/5 outline-none focus:border-amber-400/30 transition-all resize-none font-serif text-xl leading-relaxed text-blue-50 glow-border"
+          className="w-full h-64 p-6 lg:p-8 rounded-3xl glass-card border-white/5 outline-none focus:border-amber-400/30 transition-all resize-none font-serif text-xl leading-relaxed text-blue-50 glow-border"
         />
 
         <div className="space-y-6">
@@ -373,6 +375,7 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
   });
   const [activeEntry, setActiveEntry] = useState<NotebookEntry | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const sentenceRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
   const handleSaveDiary = (entry: DiaryEntry) => {
@@ -452,19 +455,41 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
   }, [activeEntry, hoveredIndex]);
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden relative">
+      {/* Sidebar Overlay for Mobile */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <div className="w-[320px] border-r border-white/5 bg-white/5 flex flex-col overflow-hidden">
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-[280px] border-r border-white/10 bg-indigo-950/95 backdrop-blur-xl flex flex-col overflow-hidden transition-transform duration-300 lg:relative lg:translate-x-0 lg:bg-white/5 lg:w-[320px] lg:z-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between lg:hidden mb-2">
+            <span className="text-sm font-bold text-blue-200">时光轴</span>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 text-blue-300/60">
+              <X size={20} />
+            </button>
+          </div>
           <div className="flex gap-2">
             <button 
-              onClick={() => { setMode('diary'); setActiveEntry(null); }}
+              onClick={() => { setMode('diary'); setActiveEntry(null); setIsSidebarOpen(false); }}
               className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${mode === 'diary' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white/5 text-blue-300/60 hover:bg-white/10'}`}
             >
               <BookOpen size={16} /> 日记
             </button>
             <button 
-              onClick={() => { setMode('dream'); setActiveEntry(null); }}
+              onClick={() => { setMode('dream'); setActiveEntry(null); setIsSidebarOpen(false); }}
               className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${mode === 'dream' ? 'bg-amber-600 text-white shadow-lg' : 'bg-white/5 text-blue-300/60 hover:bg-white/10'}`}
             >
               <Moon size={16} /> 梦境
@@ -484,7 +509,7 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
             entries.map(entry => (
               <button
                 key={entry.id}
-                onClick={() => setActiveEntry(entry)}
+                onClick={() => { setActiveEntry(entry); setIsSidebarOpen(false); }}
                 className={`w-full text-left p-4 rounded-2xl transition-all group relative border ${
                   activeEntry?.id === entry.id 
                     ? (entry.type === 'diary' ? 'glass-card border-indigo-400/30 glow-blue' : 'glass-card border-amber-400/30 glow-amber') 
@@ -508,10 +533,24 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Mobile Header Toggle */}
+        <div className="lg:hidden p-4 flex items-center justify-between border-b border-white/5 bg-white/5">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 bg-white/5 rounded-lg text-blue-300/60 hover:bg-white/10 transition-colors"
+          >
+            <Menu size={20} />
+          </button>
+          <span className="text-sm font-serif italic text-blue-200/60">
+            {activeEntry ? (activeEntry.type === 'diary' ? '日记详情' : '梦境详情') : (mode === 'diary' ? '记录星尘' : '记录梦境')}
+          </span>
+          <div className="w-9" /> {/* Spacer for balance */}
+        </div>
+
         <div className="flex-1 overflow-y-auto">
           {activeEntry ? (
             <div className="flex flex-col lg:flex-row h-full">
-              <div className="flex-1 p-12 overflow-y-auto">
+              <div className="flex-1 p-6 lg:p-12 overflow-y-auto">
                 <div className="max-w-3xl mx-auto space-y-8">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
@@ -525,7 +564,7 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
                     </button>
                   </div>
 
-                  <div className="font-serif text-2xl leading-relaxed text-blue-50/90 whitespace-pre-wrap">
+                  <div className="font-serif text-xl lg:text-2xl leading-relaxed text-blue-50/90 whitespace-pre-wrap">
                     {activeEntry.type === 'diary' ? renderedDiaryContent : activeEntry.content}
                   </div>
 
@@ -558,7 +597,7 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
               </div>
 
               {/* AI Feedback Panel */}
-              <div className={`w-96 p-8 border-l border-white/5 overflow-y-auto space-y-8 ${activeEntry.type === 'diary' ? 'bg-indigo-950/20' : 'bg-amber-950/20'}`}>
+              <div className={`w-full lg:w-96 p-6 lg:p-8 border-t lg:border-t-0 lg:border-l border-white/5 overflow-y-auto space-y-8 ${activeEntry.type === 'diary' ? 'bg-indigo-950/20' : 'bg-amber-950/20'}`}>
                 <div className="text-xs font-bold text-blue-400/40 uppercase tracking-[0.2em] mb-8">
                   {activeEntry.type === 'diary' ? '心泊的批注' : '梦境的回响'}
                 </div>
@@ -585,17 +624,12 @@ const NotebookMode = ({ onInteract }: { onInteract: (text: string) => void }) =>
             </div>
           ) : (
             mode === 'diary' ? (
-              <div className="h-full flex flex-col p-12">
+              <div className="h-full flex flex-col p-6 lg:p-12">
                 <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col">
                   <div className="flex items-center gap-2 mb-6 text-blue-300/60">
                     <Sparkles size={16} />
                     <span className="text-sm font-serif italic">记录醒时心事...</span>
                   </div>
-                  <textarea
-                    value={sentenceRefs.current.length > 0 ? '' : ''} // Reset refs
-                    onChange={(e) => {}} // Placeholder
-                    className="hidden"
-                  />
                   <DiaryEditor onSave={handleSaveDiary} onInteract={onInteract} />
                 </div>
               </div>
@@ -652,13 +686,13 @@ const DiaryEditor = ({ onSave, onInteract }: { onSave: (entry: DiaryEntry) => vo
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="亲爱的星空..."
-        className="flex-1 w-full p-8 rounded-3xl glass-card border-white/5 outline-none focus:border-blue-400/30 transition-all resize-none font-serif text-xl leading-relaxed text-blue-50 glow-border"
+        className="flex-1 w-full p-6 lg:p-8 rounded-3xl glass-card border-white/5 outline-none focus:border-blue-400/30 transition-all resize-none font-serif text-xl leading-relaxed text-blue-50 glow-border"
       />
       <div className="mt-6 flex justify-end">
         <button
           onClick={handleSave}
           disabled={loading || !content.trim()}
-          className="px-10 py-4 bg-indigo-600 text-white rounded-full hover:bg-indigo-500 transition-all disabled:opacity-30 shadow-xl shadow-indigo-600/20 font-medium jelly-button"
+          className="px-6 lg:px-10 py-4 bg-indigo-600 text-white rounded-full hover:bg-indigo-500 transition-all disabled:opacity-30 shadow-xl shadow-indigo-600/20 font-medium jelly-button"
         >
           {loading ? '心泊正在阅读...' : '封存星尘'}
         </button>
@@ -854,7 +888,7 @@ const ReleaseMode = ({ onInteract }: { onInteract: (text: string) => void }) => 
                 className="relative flex flex-col items-center mt-8"
               >
                 <div 
-                  className="w-56 h-68 rounded-full flex items-center justify-center p-6 text-center"
+                  className="w-48 h-56 lg:w-56 lg:h-68 rounded-full flex items-center justify-center p-6 text-center"
                   style={{
                     border: '2px dashed rgba(139, 92, 246, 0.5)',
                     background: 'rgba(139, 92, 246, 0.05)',
@@ -890,7 +924,7 @@ const ReleaseMode = ({ onInteract }: { onInteract: (text: string) => void }) => 
                 {/* 气球主体 */}
                 <div className="relative">
                   <motion.div 
-                    className="w-56 h-68 rounded-full flex items-center justify-center p-6 text-center shadow-2xl"
+                    className="w-48 h-56 lg:w-56 lg:h-68 rounded-full flex items-center justify-center p-6 text-center shadow-2xl"
                     animate={{
                       scale: isDragging ? 1.05 : 1,
                       transition: { duration: 0.1 }
@@ -973,31 +1007,31 @@ const EmotionMode = () => {
   }, [history]);
 
   return (
-    <div className="max-w-5xl mx-auto p-8 space-y-12 pb-32">
+    <div className="max-w-5xl mx-auto p-6 lg:p-8 space-y-12 pb-32">
       <header className="text-center space-y-2">
-        <h2 className="text-3xl font-serif text-blue-50">情绪光谱时间轴</h2>
+        <h2 className="text-2xl lg:text-3xl font-serif text-blue-50">情绪光谱时间轴</h2>
         <p className="text-blue-300/40 text-sm">记录你每一个细微的情绪起伏</p>
       </header>
 
-      <div className="space-y-20">
+      <div className="space-y-16 lg:space-y-20">
         {timelineData.map(([day, records]) => (
-          <section key={day} className="space-y-10">
+          <section key={day} className="space-y-8 lg:space-y-10">
             <div className="flex items-center gap-4">
               <div className="h-px flex-1 bg-white/10" />
-              <span className="text-sm font-mono text-blue-300/40 uppercase tracking-widest font-bold">{day}</span>
+              <span className="text-xs lg:text-sm font-mono text-blue-300/40 uppercase tracking-widest font-bold">{day}</span>
               <div className="h-px flex-1 bg-white/10" />
             </div>
 
-            <div className="relative h-64 flex items-center px-6 glass-card rounded-[40px] border-white/10 overflow-visible">
+            <div className="relative h-64 flex items-center px-4 lg:px-6 glass-card rounded-3xl lg:rounded-[40px] border-white/10 overflow-visible">
               {/* Time axis */}
-              <div className="absolute bottom-10 left-10 right-10 h-px bg-white/20 flex justify-between">
-                {[0, 4, 8, 12, 16, 20, 23].map(h => (
-                  <span key={h} className="text-xs text-white/30 mt-3 font-medium">{h}:00</span>
+              <div className="absolute bottom-10 left-6 lg:left-10 right-6 lg:right-10 h-px bg-white/20 flex justify-between">
+                {[0, 6, 12, 18, 23].map(h => (
+                  <span key={h} className="text-[10px] lg:text-xs text-white/30 mt-3 font-medium">{h}:00</span>
                 ))}
               </div>
 
               {/* Data points */}
-              <div className="flex-1 relative h-full mx-10">
+              <div className="flex-1 relative h-full mx-6 lg:mx-10">
                 {records.map((record, idx) => {
                   const date = new Date(record.timestamp);
                   const hours = date.getHours() + date.getMinutes() / 60;
@@ -1039,7 +1073,7 @@ const EmotionMode = () => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.25 }}
-                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 w-72 glass-card p-6 rounded-[24px] border-white/20 z-[9999] pointer-events-none shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+                            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-8 w-64 lg:w-72 glass-card p-5 lg:p-6 rounded-[24px] border-white/20 z-[9999] pointer-events-none shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
                             style={{ background: 'rgba(15, 15, 25, 0.95)' }}
                           >
                             <div className="flex justify-between items-center mb-4">
@@ -1170,18 +1204,18 @@ export default function App() {
       <div className="meteor meteor-3" />
       
       {/* Header */}
-      <header className="px-8 py-6 flex justify-between items-center z-50">
+      <header className="px-6 lg:px-8 py-4 lg:py-6 flex justify-between items-center z-50">
         <motion.div 
           initial={{ opacity: 0, x: -20 }} 
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-3"
         >
-          <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]">
-            <Heart size={22} fill="currentColor" />
+          <div className="w-9 h-9 lg:w-10 lg:h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]">
+            <Heart size={20} fill="currentColor" className="lg:w-[22px] lg:h-[22px]" />
           </div>
           <div>
-            <h1 className="text-2xl font-serif font-bold tracking-tight text-white">Mindock <span className="text-indigo-400">心泊</span></h1>
-            <p className="text-[10px] text-blue-300/40 uppercase tracking-[0.3em] font-medium">Emotional Sanctuary</p>
+            <h1 className="text-xl lg:text-2xl font-serif font-bold tracking-tight text-white">Mindock <span className="text-indigo-400">心泊</span></h1>
+            <p className="text-[9px] lg:text-[10px] text-blue-300/40 uppercase tracking-[0.3em] font-medium">Emotional Sanctuary</p>
           </div>
         </motion.div>
         
@@ -1278,12 +1312,12 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-2 py-2 glass-card rounded-full border-white/10 shadow-2xl flex items-center gap-1">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-2 py-2 glass-card rounded-full border-white/10 shadow-2xl flex items-center gap-1 max-w-[95vw]">
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setMode(item.id as Mode)}
-            className={`relative flex items-center gap-2 px-5 py-3 rounded-full transition-all duration-500 group ${
+            className={`relative flex items-center gap-2 px-3 lg:px-5 py-3 rounded-full transition-all duration-500 group ${
               mode === item.id ? 'bg-white/10 glow-selected' : 'hover:bg-white/5'
             }`}
           >
